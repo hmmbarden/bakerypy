@@ -1,5 +1,4 @@
 import random
-
 # menuActive variable decides if the Menu is active/being used or not.
 # pageActive variable decides if which Page is active/being used. 0 = null/no page
 
@@ -10,8 +9,29 @@ if menuActive == 0:
     print("menuActive variable is set to zero.")
 
 # Items in shop (dictionary):
-shop = {"Chocolate Cake":20, "Butterscotch Cream Cake":20, "Sponge Cake":30, "Salad":40}
+shop = {"Chocolate Cake": 20, "Butterscotch Cream Cake": 20, "Sponge Cake": 30, "Salad": 40}
 order = {}
+
+def showmenu():
+    print('\n')
+    for item in shop:
+                       # item name         # item price
+            string = "ID: " + str(list(shop).index(item)) + ", " + item + ", at $" + str(shop[item]) + " only."
+            print(string)
+
+def add_item(item_name, cost):
+    # add item into the dictionary
+    shop[item_name] = cost
+    # send message for successful operation.
+    print(f"New item '{item_name}' for the price of ${cost} was added successfully!")
+
+
+def remove_item(item_id):
+    # send message for successful operation.
+    print(f"Item '{list(shop)[item_id]}' was removed from the Menu.")
+    # remove item from the list.
+    name_of_item = list(shop)[item_id]
+    shop.pop(name_of_item)
 
 
 def place_order(item_name, quantity):
@@ -29,7 +49,6 @@ def place_order(item_name, quantity):
         price = quantity * shop[item_name]
         # order = {'Item Name':{'quantity':10,'total_price':price}}
         order[item_name] = {'quantity': quantity, 'total_price': price}
-    print(order)
 
     # Message sent if item is successfully added in shopping cart.
     message = "Added " + str(quantity) + " " + item_name + " to shopping cart."
@@ -60,7 +79,6 @@ while(menuActive > 0):
         print("------------[ BAKERY ]------------\n\nWelcome to the Bakery!")
         # navigation:
         response = input(main_menu)
-        print("------------[ BAKERY ]------------\n\nWelcome to the Bakery!")
 
         if response == "shop":
             pageActive = 2
@@ -82,12 +100,8 @@ while(menuActive > 0):
     elif pageActive == 2:
         # USER IS CHECKING SHOP:
         # show all items in shop.
-        print("\n------------[ MENU ]------------\n")
-        for item in shop:
-                       # item name         # item price
-            string = "ID: " + str(list(shop).index(item)) + ", " + item + ", at $" + str(shop[item]) + " only."
-            print(string)
-        print("\n------------[ MENU ]------------\n")
+        print("------------[ Menu ]------------")
+        showmenu()
         print("\n")
 
         new_response = input("Type: \n'return' => return to main menu.\n'order <item_id> <quantity>': place an order for an item.\n'cart': check your shopping cart\n Input: ")
@@ -109,12 +123,19 @@ while(menuActive > 0):
             print(new_response)
 
     elif pageActive == 3:
+        print("\n------------[ SHOPPING CART ]------------\n")
+        total = 0
         # USER IS CHECKING THEIR SHOPPING CART:
         if len(order) == 0:
-            print("There are no items in the shopping cart! Visit the 'shop' to add items.")
+            print("There are no items in the shopping cart! Visit the 'shop' to add items. Returning to Menu.")
+            pageActive == 1
         for item in order:
-            bill_item_format = "ID: " + str(list(shop).index(item)) + ", " + item + " : $" + str(shop[item])
+            bill_item_format = "ID: " + str(list(shop).index(item)) + ", " + item + " : $" + str(shop[item]) + " * " + str(order[item]['quantity']) + " = $" + str(order[item]['total_price'])
+            total += int(order[item]['total_price'])
             print(bill_item_format)
+        
+        print(f"Total Bill: ${total}. Discount applied while checkout.")
+        print("\n------------[ SHOPPING CART ]------------\n")
 
         new_response = input("Type: \n'return' => return to main menu.\n'shop': check the shop.\n 'remove <item_id> <quantity>': remove an item from cart. \n'checkout': proceed to checkout\n Input: ")
         new_response = new_response.split(" ") # split by words
@@ -135,6 +156,7 @@ while(menuActive > 0):
             pageActive = 4
 
     elif pageActive == 4:
+        print("\n-----------------[ CHECKOUT ]-----------------")
         # USER IS CHECKING OUT:
         # print the order:
         item_count = 0
@@ -151,12 +173,14 @@ while(menuActive > 0):
         discount = random.randint(1, 15)
         total -= (discount/100) * total 
 
-        print("------------------------------")
+        print("------------------------------------------------")
         # send final message:
         total_bill_message = "Your bill was $" + str(old_total) + ". New total, after " + str(discount) + "% discount is $" + str(total) + ". Type 'ok' to proceed, 'cancel' to opt out. \n Type 'cart' to view cart and make changes. \n Input: "
         new_response = input(total_bill_message)
         if new_response == 'ok':
+            print("Payment being processed..")
             print("Thank you for purchasing! Do come again!")
+            pageActive = 1
         if new_response == 'cancel':
             print("Opting out of Checkout Menu. Entering Main Menu...")
             pageActive = 1
@@ -172,12 +196,38 @@ while(menuActive > 0):
         menuActive = 0
     
     elif pageActive == 6:
-        print("\n------------[ ADMIN PANEL / AUTHORISED PERSONNEL ONLY ]------------\n\n")
+        print("\n------------[ ADMIN PANEL / AUTHORISED PERSONNEL ONLY ]------------\n")
         new_response = input("Welcome, admin. Type 'password <password>' to login. Type 'return' to return to main menu.\n\n Input: ")
         new_response = new_response.split(" ")
         if new_response[0] == "password":
             if new_response[1] == "123":
                 print("Login successful.")
+                pageActive = 7
             else:
                 print("Wrong password!")
-        
+        elif new_response[0] == "return":
+            pageActive = 1
+
+
+    elif pageActive == 7:
+        showmenu()
+        menu = "\n Type 'add <item_name> <cost_per_unit>' to add an item." + "\n Type 'delete <item_id>' to delete an item. \n Type 'new_cost <item_id> <cost>' to change cost of item. \n Type 'return' to return to the main menu\n\nInput: "
+        response = input(menu)
+        response = response.split(" ")
+        if response[0] == "add":
+            name = response[1]
+            cost = int(response[2])   
+            add_item(name, cost)
+        elif response[0] == "delete":
+            item_id = int(response[1])
+            remove_item(item_id)
+        elif response[0] == "new_cost":
+            # change the cost
+            name = list(shop)[int(response[1])]
+            cost = int(response[2])
+            shop[name] = cost
+        elif response[0] == "return":
+            pageActive = 1
+            print(pageActive)
+        else:
+            print("Wrong input. Please try again!")
