@@ -1,71 +1,111 @@
-import random
+import random       # Random Discount
 import time
-#import mysql.connector
-#connection = mysql.connector.connect(
-#    user="root",
-#    host="localhost",
-#    password="admin",
-#    database="shop",
-#    port="3306"
-#)
-#database_cursor = connection.cursor()
-#database_cursor.execute("drop table items;")
-#database_cursor.execute("create table items(ID int, NAME varchar(255), PRICE int);")
 
-# menuActive variable decides if the Menu is active/being used or not.
-# pageActive variable decides if which Page is active/being used. 0 = null/no page
+import mysql.connector
+connection = mysql.connector.connect(
+    user="root",
+    host="localhost",
+    password="admin",
+    database="shop",
+    port="3306"
+)
 
-menuActive = 1
-pageActive = 1
-
-if menuActive == 0:
-    print("menuActive variable is set to zero.")
 
 # Items in shop (dictionary):
 shop = {"Chocolate Cake": 20, "Butterscotch Cream Cake": 20, "Sponge Cake": 30, "Salad": 40}
 order = {}
 
+def init_database():
+    item_id = 1
+    database_cursor = connection.cursor()
+    database_cursor.execute("create table items(ID int, NAME varchar(255), PRICE int);")
+    connection.commit()     # gotta do this because stack overflow said to
+    for i in shop:
+        query = f"insert into items (ID, NAME, PRICE) values ({item_id},'{i}',{shop[i]})"
+        item_id += 1
+        database_cursor.execute(query)
+        connection.commit()
+
+init_database()
+
+menuActive = 1  # menuActive variable decides if the Menu is active/being used or not.
+pageActive = 1  # pageActive variable decides if which Page is active/being used. 0 = null/no page
+
+if menuActive == 0:
+    print("menuActive variable is set to zero.")
+
+
 def showmenu():
-    print('\n')
-    for item in shop:
-                       # item name         # item price
-            string = "ID: " + str(list(shop).index(item)) + ", " + item + ", at $" + str(shop[item]) + " only."
-            print(string)
+    # establish connection to database:
+    database_cursor = connection.cursor()
+    database_cursor.execute('select * from items;')
+    data = database_cursor.fetchall()
+
+    # display items in database:
+    for item_data in data:
+        item_info = f"ID: {str(item_data[0])}, \"{str(item_data[1])}\", ${str(item_data[2])}"
+        print(item_info)
+
 
 def add_item(item_name, cost):
-    # add item into the dictionary
-    shop[item_name] = cost
+    # establish connection to database.
+    database_cursor = connection.cursor()
+    database_cursor.execute('select ID from items;')
+    total_items = len(database_cursor.fetchall())
+    # QUERY TO ADD ITEM:
+    database_cursor.execute(f'insert into items (ID, NAME, PRICE) values ({total_items+1},\'{item_name}\',{cost})')
+    connection.commit()
     # send message for successful operation.
     print(f"New item '{item_name}' for the price of ${cost} was added successfully!")
 
 
 def remove_item(item_id):
-    # send message for successful operation.
-    print(f"Item '{list(shop)[item_id]}' was removed from the Menu.")
-    # remove item from the list.
-    name_of_item = list(shop)[item_id]
-    shop.pop(name_of_item)
+    # establish connection to database.
+    database_cursor = connection.cursor()
+
+    # get name of the item that was deleted.
+    database_cursor.execute(f'select NAME from items where ID={item_id}')
+    data = database_cursor.fetchall()
+    name = data[0][0]
+    # delete item from database
+    database_cursor.execute(f'delete from items where ID={item_id}')
+    connection.commit()
+
+    # send message for successful
+    print(f'Item \'{name}\' removed from the database!')
 
 
 def place_order(item_name, quantity):
+    # establish database connection.
+    database_cursor = connection.cursor()
+    database_cursor.execute(f'select * from items where NAME=\'{item_name}\'')
+    data = database_cursor.fetchall()
+    item_id = int(data[0][0])
+    item_price = int(data[0][2])
     quantity = int(quantity)
+
     # if similar order already exists, add quantity:
     if item_name in order.keys():
         # add to existing quantity:
         quantity = int(order[item_name]['quantity']) + quantity
         price = 0
         # recalculate price:
-        price = quantity * shop[item_name]
+        price = quantity * item_price
+        order[item_name]['item_id'] = item_id
+        order[item_name]['single_item_price'] = item_price
         order[item_name]['total_price'] = price
         order[item_name]['quantity'] = quantity
     else:
-        price = quantity * shop[item_name]
+        price = quantity * item_price
         # order = {'Item Name':{'quantity':10,'total_price':price}}
         order[item_name] = {'quantity': quantity, 'total_price': price}
+        order[item_name]['item_id'] = item_id
+        order[item_name]['single_item_price'] = item_price
 
     # Message sent if item is successfully added in shopping cart.
     message = "Added " + str(quantity) + " " + item_name + " to shopping cart."
     print(message)
+
 
 def remove_from_order(item_name, new_quantity):
     new_quantity = int(new_quantity)
@@ -83,6 +123,16 @@ def remove_from_order(item_name, new_quantity):
     message = str(quantity) + "x " + item_name + " was/were removed from the shopping cart."
     print(message)
 
+
+def change_cost(item_id, cost):
+    database_cursor = connection.cursor()
+    database_cursor.execute(f'update items set PRICE={cost} where ID={item_id}')
+    connection.commit()
+    database_cursor.execute(f'select * from items where ID={item_id}')
+    data = database_cursor.fetchall()
+    print(f'Price of item \'{data[0][1]}\' has been set to ${cost}')
+
+
 def create_bill():
     # order variable is the dictionary "order"
     bill = open('bill.txt',"w")
@@ -90,7 +140,7 @@ def create_bill():
     item_count = 0
     for item in order:
         item_count += 1
-        bill.write(f"[{item_count}] {order[item]['quantity']}x {item}   -    ${order[item]['total_price']}  |   ${shop[item]} x {order[item]['quantity']}\n")
+        bill.write(f"[{item_count}] {order[item]['quantity']}x {item}   -    ${order[item]['total_price']}  |   ${order[item]['single_item_price']} x {order[item]['quantity']}\n")
     bill.write('------------------------------------------\n\n')
     bill.write(f"Total Amount      -     {old_total}\n")
     bill.write(f"After Discount ({discount}%)    -     {total}")
@@ -139,11 +189,15 @@ while(menuActive > 0):
         elif new_response[0] == "cart":
             pageActive = 3
         elif new_response[0] == "order":
+            # establish database conenction
+            database_cursor = connection.cursor()
             bool_1 = new_response[1].isnumeric
             bool_2 = new_response[2].isnumeric
             if bool_1 and bool_2:
                 provided_id  = int(new_response[1])
-                item_name = list(shop)[provided_id]
+                database_cursor.execute(f'select * from items where ID={provided_id}')
+                data = database_cursor.fetchall()
+                item_name = data[0][1]
                 quantity = new_response[2]
                 place_order(item_name, quantity)
         else:
@@ -158,7 +212,7 @@ while(menuActive > 0):
             print("\n------------[ SHOPPING CART ]------------\n")
             total = 0
             for item in order:
-                bill_item_format = "ID: " + str(list(shop).index(item)) + ", " + item + " : $" + str(shop[item]) + " * " + str(order[item]['quantity']) + " = $" + str(order[item]['total_price'])
+                bill_item_format = "ID: " + str(order[item_name]['item_id']) + ", " + item + " : $" + str(order[item]['single_item_price']) + " * " + str(order[item]['quantity']) + " = $" + str(order[item]['total_price'])
                 total += int(order[item]['total_price'])
                 print(bill_item_format)
             
@@ -196,7 +250,7 @@ while(menuActive > 0):
             for item in order:
                 item_count += 1
                 # [1] 10x Strawberry Cake for $200, ($20 each)
-                order_item_details = "[" + str(item_count) + "] " + str(order[item]['quantity']) + "x " + item + " for $" + str(order[item]['total_price']) + " ($" + str(shop[item]) + " each, " + "ID: " + str(list(shop).index(item)) + ")"
+                order_item_details = "[" + str(item_count) + "] " + str(order[item]['quantity']) + "x " + item + " for $" + str(order[item]['total_price']) + " ($" + str(order[item]['single_item_price']) + " each, " + "ID: " + str(order[item_name]['item_id']) + ")"
                 print(order_item_details)
                 total += int(order[item]['total_price'])
             
@@ -260,9 +314,9 @@ while(menuActive > 0):
             remove_item(item_id)
         elif response[0] == "new_cost":
             # change the cost
-            name = list(shop)[int(response[1])]
+            id = int(response[1])
             cost = int(response[2])
-            shop[name] = cost
+            change_cost(id, cost)
         elif response[0] == "return":
             pageActive = 1
             print(pageActive)
