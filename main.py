@@ -12,14 +12,20 @@ connection = mysql.connector.connect(
 
 
 # Items in shop (dictionary):
-shop = {"Chocolate Cake": 20, "Butterscotch Cream Cake": 20, "Sponge Cake": 30, "Salad": 40}
+shop = {"Chocolate Cake": 20, "Butterscotch Cream Cake": 20, "Sponge Cake": 30, "Salad": 40, "Black Forest": 90, "Red Velvet": 145, "Caramelised White Chocolate": 160, "Mango Cheesecake": 190, "Lotus White Chocolate": 155, "Pistachio Raspberry Basque": 170}
 order = {}
 
 def init_database():
     item_id = 1
     database_cursor = connection.cursor()
-    database_cursor.execute("create table items(ID int, NAME varchar(255), PRICE int);")
-    connection.commit()     # gotta do this because stack overflow said to
+    try:
+        database_cursor.execute("create table items(ID int, NAME varchar(255), PRICE int);")
+        connection.commit()     # gotta do this because stack overflow said to
+    except:
+        database_cursor.execute("drop table items;")
+        database_cursor.execute("create table items(ID int, NAME varchar(255), PRICE int);")
+        connection.commit()     # gotta do this because stack overflow said to
+    
     for i in shop:
         query = f"insert into items (ID, NAME, PRICE) values ({item_id},'{i}',{shop[i]})"
         item_id += 1
@@ -191,15 +197,20 @@ while(menuActive > 0):
         elif new_response[0] == "order":
             # establish database conenction
             database_cursor = connection.cursor()
-            bool_1 = new_response[1].isnumeric
-            bool_2 = new_response[2].isnumeric
-            if bool_1 and bool_2:
-                provided_id  = int(new_response[1])
-                database_cursor.execute(f'select * from items where ID={provided_id}')
-                data = database_cursor.fetchall()
-                item_name = data[0][1]
-                quantity = new_response[2]
-                place_order(item_name, quantity)
+            try:
+                bool_1 = new_response[1].isnumeric
+                bool_2 = new_response[2].isnumeric
+                if bool_1 and bool_2:
+                    provided_id  = int(new_response[1])
+                    database_cursor.execute(f'select * from items where ID={provided_id}')
+                    data = database_cursor.fetchall()
+                    item_name = data[0][1]
+                    quantity = new_response[2]
+                    place_order(item_name, quantity)
+            except:
+                print("Wrong Input!")
+                pageActive == 0
+                pageActive == 2
         else:
             print(new_response)
 
